@@ -1,0 +1,179 @@
+import json
+import re
+import requests
+import numpy as np
+import warnings
+import pandas as pd
+from bs4 import BeautifulSoup
+from time import perf_counter
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+
+def prep_data():
+    data = pd.read_csv("./input/data.txt")
+    translation = dict(zip(data['Part Number'], data['Custom_Real_01']))
+    with open("data/translation.json", "w") as outfile:
+        json.dump(translation, outfile)
+
+    v_date = pd.read_csv("./input/validate.csv")
+    validation = dict(zip(v_date['TOKI'], v_date['TLI']))
+    with open("data/validation.json", "w") as outfile:
+        json.dump(validation, outfile)
+
+    bl = pd.read_csv("./input/bl.txt")
+    bl.columns = ["pn", "qty", "factor"]
+    bl["qty"] = bl["qty"] * bl["factor"]
+    bl = bl.groupby("pn", as_index=False).sum()
+    backlog = dict(zip(bl['pn'], bl['qty']))
+    with open("./data/backlog.json", "w") as outfile:
+        json.dump(backlog, outfile)
+
+    hfr = pd.read_csv("./input/hfr.txt")
+    hfr.columns = ["pn", "qty", "factor"]
+    hfr["qty"] = hfr["qty"] * hfr["factor"]
+    hfr = hfr.groupby("pn", as_index=False).sum()
+    hold_for_release = dict(zip(hfr['pn'], hfr['qty']))
+    with open("./data/hfr.json", "w") as outfile:
+        json.dump(hold_for_release, outfile)
+
+
+def build_schedule():
+    with open("data/validation.json", "r") as infile:
+        validation = json.load(infile)
+    with open("data/translation.json", "r") as infile:
+        translation = json.load(infile)
+
+    html = requests.get(
+        'https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001.htm')
+    soup = BeautifulSoup(html.content, 'html.parser')
+    table = soup.find_all('table')
+    df = pd.read_html(str(table))[0]
+
+    df = df.drop(columns=[1, 2, 3, 4])
+    df.columns = range(df.columns.size)
+    dates = df.iloc[3][1:]
+    with open("data/dates.json", "w") as outfile:
+        json.dump(dates.to_list(), outfile)
+
+    df = df.replace(np.nan, 0)
+    df = df[5:]
+    df.reset_index(drop=True, inplace=True)
+    for index, row in df.iterrows():
+        temp = re.split("[^\\w-][^\\d.]+", row[0])
+        df.at[index, 0] = temp[0]
+    for column in df:
+        if column > 0:
+            df[column] = df[column].astype(float)
+    df = df.groupby(0, as_index=False).sum()
+
+    for index, row in df.iterrows():
+        key = row[0]
+        if key in validation:
+            value = validation[key]
+            df.at[index, 0] = value
+
+    translated = True
+    for index, row in df.iterrows():
+        key = row[0]
+        if key == "IGNORE_ME":
+            print(f"Schedule Validation: Line #{index + 1} ignored")
+            continue
+        if key in translation:
+            value = translation[key]
+            for i in range(1, row.size):
+                df.at[index, i] = value * df.at[index, i]
+        else:
+            translated = False
+            print(f"Schedule Validation: {key} not found.")
+    if not translated:
+        exit(1)
+
+    df.set_index(0, inplace=True)
+    schedule = {}
+    for index, row in df.iterrows():
+        temp = []
+        for item in row:
+            temp.append(item)
+        schedule[index] = temp
+
+    with open("data/schedule.json", "w") as outfile:
+        json.dump(schedule, outfile)
+
+
+def build_report():
+    with open("data/dates.json", "r") as infile:
+        dates = json.load(infile)
+    header = ['Part Number', 'On Hand', 'Backlog', 'Released',
+              'HFR', 'On Order', 'Scheduled', 'TAvail', 'RAvail', 'Reorder', ]
+    new_dates = []
+    for index, date in enumerate(dates):
+        new_dates.append(f"{index + 1}:{date}")
+    header.extend(new_dates)
+    df = pd.DataFrame(columns=header)
+    data = pd.read_csv("./input/data.txt")
+    df['Part Number'] = data['Part Number']
+    df['On Hand'] = data['QtyRealTimeOnHand']
+    df['On Order'] = data['QtyOnPurchaseOrder']
+    df['Reorder'] = data['Minimum_Stock_Level']
+    df = df.replace(np.nan, 0)
+    with open("data/backlog.json", "r") as infile:
+        bl = json.load(infile)
+    with open("data/hfr.json", "r") as infile:
+        hfr = json.load(infile)
+    with open("data/schedule.json", "r") as infile:
+        schedule = json.load(infile)
+    for row in df.index:
+        key = df.loc[row, 'Part Number']
+        if key in bl:
+            df.loc[row, 'Backlog'] = bl[key]
+        if key in hfr:
+            df.loc[row, 'HFR'] = hfr[key]
+            df.loc[row, 'Released'] = bl[key] - hfr[key]
+        if key in schedule:
+            ttl = 0
+            for index, date in enumerate(new_dates):
+                val = (schedule[key])[index]
+                df.loc[row, date] = val
+                ttl += val
+            df.loc[row, 'Scheduled'] = ttl
+        df.loc[row, 'T-Avail'] = df.loc[row, 'On Hand'] + \
+            df.loc[row, 'On Order'] - df.loc[row, 'Backlog']
+        df.loc[row, 'R-Avail'] = df.loc[row, 'T-Avail'] + df.loc[row, 'HFR']
+    writer = pd.ExcelWriter("output/_materials.xlsx",
+                            engine='xlsxwriter')  # type: ignore
+    df.to_excel(writer, sheet_name='Sheet1', index=False)
+    writer.close()
+
+
+def format_report():
+    fmt = "./output/formatted_materials.xlsx"
+    writer = pd.ExcelWriter(fmt, engine='xlsxwriter')  # type: ignore
+    df = pd.read_excel("./output/_materials.xlsx")
+    df.to_excel(writer, sheet_name='Sheet1', index=False)
+
+    workbook = writer.book
+    worksheet = writer.sheets["Sheet1"]
+    format1 = workbook.add_format({"num_format": "#,##0"})  # type: ignore
+    for i in range(1, 20):
+        worksheet.set_column(i, 1, None, format1)
+    writer.close()
+
+
+if __name__ == '__main__':
+    print("Materials 15.1.0\u00A9 2002-2024 by Michael N. Rowsey")
+    print("------------------------------------------")
+    start = perf_counter()
+    prep_data()
+    data_prep = perf_counter()
+    build_schedule()
+    schedule_build = perf_counter()
+    build_report()
+    report_build = perf_counter()
+    format_report()
+    report_format = perf_counter()
+    print(f"load data: {(data_prep - start):.3f} seconds")
+    print(f"scrape: {(schedule_build - data_prep):.3f} seconds")
+    print(f"build: {(report_build - schedule_build):.3f} seconds")
+    print(f"format`: {(report_format - report_build):.3f} seconds")
+    print(f"Total Elasped Time: {(report_format - start):.3f} seconds")
