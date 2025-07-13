@@ -11,6 +11,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def prep_data():
+
     data_df = pd.read_csv("data.txt")
     translate_dict = dict(zip(data_df["Part Number"], data_df["Custom_Real_01"]))
 
@@ -43,6 +44,7 @@ def prep_data():
 
 
 def build_schedule():
+
     with open(".validation.json", "r") as infile:
         validation = json.load(infile)
     with open(".translation.json", "r") as infile:
@@ -114,6 +116,7 @@ def build_schedule():
 
 
 def build_report():
+
     with open(".dates.json", "r") as infile:
         dates = json.load(infile)
 
