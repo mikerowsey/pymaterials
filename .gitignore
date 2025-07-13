@@ -1,4 +1,5 @@
 .*
 !/.gitignore
 _materials.xlsx
+pyrightconfig.json
 
