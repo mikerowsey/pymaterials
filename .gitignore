@@ -2,4 +2,5 @@
 !/.gitignore
 _materials.xlsx
 pyrightconfig.json
+__pycache__
 

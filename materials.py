@@ -4,6 +4,7 @@ import requests
 import numpy as np
 import warnings
 import pandas as pd
+import constants
 from bs4 import BeautifulSoup
 from time import perf_counter
 
@@ -12,34 +13,34 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 def prep_data():
 
-    data_df = pd.read_csv("data.txt")
+    data_df = pd.read_csv(constants.DATA_TXT)
     translate_dict = dict(zip(data_df["Part Number"], data_df["Custom_Real_01"]))
 
     with open(".translation.json", "w") as outfile:
         json.dump(translate_dict, outfile)
 
-    valid_df = pd.read_csv("validate.csv")
+    valid_df = pd.read_csv(constants.VALIDATE_CSV)
     valid_dict = dict(zip(valid_df["TOKI"], valid_df["TLI"]))
 
-    with open(".validation.json", "w") as outfile:
+    with open(constants.VALIDATE_JSON, "w") as outfile:
         json.dump(valid_dict, outfile)
 
-    bl_df = pd.read_csv("bl.txt")
+    bl_df = pd.read_csv(constants.BL)
     bl_df.columns = ["pn", "qty", "factor"]
     bl_df["qty"] = bl_df["qty"] * bl_df["factor"]
     bl_df = bl_df.groupby("pn", as_index=False).sum()
     bl_dict = dict(zip(bl_df["pn"], bl_df["qty"]))
 
-    with open(".backlog.json", "w") as outfile:
+    with open(constants.BL_JSON, "w") as outfile:
         json.dump(bl_dict, outfile)
 
-    hfr_df = pd.read_csv("hfr.txt")
+    hfr_df = pd.read_csv(constants.HFR)
     hfr_df.columns = ["pn", "qty", "factor"]
     hfr_df["qty"] = hfr_df["qty"] * hfr_df["factor"]
     hfr_df = hfr_df.groupby("pn", as_index=False).sum()
     hfr_dict = dict(zip(hfr_df["pn"], hfr_df["qty"]))
 
-    with open(".hfr.json", "w") as outfile:
+    with open(constants.HFR_JSON, "w") as outfile:
         json.dump(hfr_dict, outfile)
 
 
@@ -50,7 +51,7 @@ def build_schedule():
     with open(".translation.json", "r") as infile:
         translation = json.load(infile)
 
-    html = requests.get("https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001.htm")
+    html = requests.get(constants.URL)
 
     soup = BeautifulSoup(html.content, "html.parser")
     table = soup.find_all("table")
@@ -99,7 +100,7 @@ def build_schedule():
             print(f"Schedule Validation: {key} not found.")
 
     if not translated:
-        print("\nSchedule could not be validated. Please update validation.csv")
+        print(constants.VALIDATION_FAIL)
         exit(1)
 
     df.set_index(0, inplace=True)
@@ -120,39 +121,28 @@ def build_report():
     with open(".dates.json", "r") as infile:
         dates = json.load(infile)
 
-    header = [
-        "Part Number",
-        "On Hand",
-        "Backlog",
-        "Released",
-        "HFR",
-        "On Order",
-        "T-Avail",
-        "R-Avail",
-        "Reorder",
-    ]
     enumerated_dates = []
 
     for index, date in enumerate(dates):
         enumerated_dates.append(f"{date}-{index + 1}")
 
-    header.extend(enumerated_dates)
+    constants.HEADER.extend(enumerated_dates)
 
-    df = pd.DataFrame(columns=header)  # type: ignore
-    data = pd.read_csv("data.txt")
-    df["Part Number"] = data["Part Number"]
+    df = pd.DataFrame(columns=constants.HEADER)  # type: ignore
+    data = pd.read_csv(constants.DATA_TXT)
+    df[constants.PN] = data["Part Number"]
     df["On Hand"] = data["QtyRealTimeOnHand"]
     df["On Order"] = data["QtyOnPurchaseOrder"]
     df["Reorder"] = data["Minimum_Stock_Level"]
     df = df.replace(np.nan, 0)
 
-    with open(".backlog.json", "r") as infile:
+    with open(constants.BL_JSON, "r") as infile:
         bl = json.load(infile)
 
-    with open(".hfr.json", "r") as infile:
+    with open(constants.HFR_JSON, "r") as infile:
         hfr = json.load(infile)
 
-    with open(".schedule.json", "r") as infile:
+    with open(constants.SCHEDULE_JSON, "r") as infile:
         schedule = json.load(infile)
 
     for row in df.index:
@@ -175,15 +165,14 @@ def build_report():
 
         df.loc[row, "R-Avail"] = df.loc[row, "T-Avail"] + df.loc[row, "HFR"]
 
-    writer = pd.ExcelWriter("_materials.xlsx", engine="xlsxwriter")  # type: ignore
+    writer = pd.ExcelWriter(constants.MATERIALS, engine="xlsxwriter")  # type: ignore
 
     df.to_excel(writer, sheet_name="Sheet1", index=False)
     writer.close()
 
 
 if __name__ == "__main__":
-    print("\nMaterials 15.2.0 \u00a92002-2025 Michael N. Rowsey")
-    print("------------------------------------------")
+    print(constants.COPYRIGHT)
     start = perf_counter()
     prep_data()
     build_schedule()
