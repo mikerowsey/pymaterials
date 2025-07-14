@@ -10,8 +10,10 @@ HFR_JSON = ".hfr.json"
 BL_TXT = "bl.txt"
 BL_JSON = ".bl.json"
 SCHEDULE_JSON = ".schedule.json"
-VALIDATE_CSV = "valdation.csv"
-VALIDATE_JSON = ".valdation.json"
+VALIDATE_CSV = "validate.csv"
+VALIDATE_JSON = ".validate.json"
+TRANSLATE_JSON = ".translate.json"
+DATES_JSON = ".dates.json"
 MATERIALS = "_materials.xlsx"
 
 URL = "https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001.htm"
@@ -26,6 +28,14 @@ OO = "On Order"
 T_AVAIL = "T-Avail"
 R_AVAIL = "R-Avail"
 RO = "Reorder"
+
+QTY = "Quantity"
+FACTOR = "Factor"
+CR1 = "Custom_Real_01"
+QRT = "QtyRealTimeOnHand"
+QPO = "QtyOnPurchaseOrder"
+MSL = "Minimum_Stock_Level"
+IGNORE_ME = "IGNORE_ME"
 
 HEADER = [
     PN,
