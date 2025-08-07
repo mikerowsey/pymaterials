@@ -1,5 +1,6 @@
 import json
 import re
+
 import requests
 import numpy as np
 import warnings
@@ -13,6 +14,10 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 def write_json_file(write_where: str, write_what: dict) -> None:
     with open(write_where, "w") as outfile:
         json.dump(write_what, outfile)
+
+def read_json_file(read_where: str) -> dict:
+    with open(read_where, "r") as infile:
+        return json.load(infile)
 
 def make_sales_dict(read_what: str, pn: str, qty: str, factor: str) -> dict:
     df = pd.read_csv(read_what)
@@ -40,11 +45,8 @@ def prep_data():
 
 def build_schedule():
 
-    with open(constants.VALIDATE_JSON, "r") as infile:
-        validation = json.load(infile)
-
-    with open(constants.TRANSLATE_JSON, "r") as infile:
-        translation = json.load(infile)
+    validation = read_json_file(constants.VALIDATE_JSON)
+    translation = read_json_file(constants.TRANSLATE_JSON)
 
     html = requests.get(constants.URL)
 
