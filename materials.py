@@ -10,38 +10,32 @@ from time import perf_counter
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
+def write_json_file(write_where: str, write_what: dict) -> None:
+    with open(write_where, "w") as outfile:
+        json.dump(write_what, outfile)
+
+def make_sales_dict(read_what: str, pn: str, qty: str, factor: str) -> dict:
+    df = pd.read_csv(read_what)
+    df.columns = [pn, qty, factor]
+    df[qty] = df[qty] * df[factor]
+    df = df.groupby(constants.PN, as_index=False).sum()
+    return dict(zip(df[pn], df[qty]))
 
 def prep_data():
 
     data_df = pd.read_csv(constants.DATA_TXT)
     translate_dict = dict(zip(data_df[constants.PN], data_df[constants.CR1]))
-
-    with open(constants.TRANSLATE_JSON, "w") as outfile:
-        json.dump(translate_dict, outfile)
+    write_json_file(constants.TRANSLATE_JSON, translate_dict)
 
     valid_df = pd.read_csv(constants.VALIDATE_CSV)
     valid_dict = dict(zip(valid_df["TOKI"], valid_df["TLI"]))
+    write_json_file(constants.VALIDATE_JSON, valid_dict)
 
-    with open(constants.VALIDATE_JSON, "w") as outfile:
-        json.dump(valid_dict, outfile)
+    bl_dict = make_sales_dict(constants.BL_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    write_json_file(constants.BL_JSON, bl_dict)
 
-    bl_df = pd.read_csv(constants.BL_TXT)
-    bl_df.columns = [constants.PN, constants.QTY, constants.FACTOR]
-    bl_df[constants.QTY] = bl_df[constants.QTY] * bl_df[constants.FACTOR]
-    bl_df = bl_df.groupby(constants.PN, as_index=False).sum()
-    bl_dict = dict(zip(bl_df[constants.PN], bl_df[constants.QTY]))
-
-    with open(constants.BL_JSON, "w") as outfile:
-        json.dump(bl_dict, outfile)
-
-    hfr_df = pd.read_csv(constants.HFR_TXT)
-    hfr_df.columns = [constants.PN, constants.QTY, constants.FACTOR]
-    hfr_df[constants.QTY] = hfr_df[constants.QTY] * hfr_df[constants.FACTOR]
-    hfr_df = hfr_df.groupby(constants.PN, as_index=False).sum()
-    hfr_dict = dict(zip(hfr_df[constants.PN], hfr_df[constants.QTY]))
-
-    with open(constants.HFR_JSON, "w") as outfile:
-        json.dump(hfr_dict, outfile)
+    hfr_dict = make_sales_dict(constants.HFR_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    write_json_file(constants.HFR_JSON, hfr_dict)
 
 
 def build_schedule():
@@ -73,9 +67,8 @@ def build_schedule():
         temp = re.split("[^\\w-][^\\d.]+", row[0])  # type: ignore
         df.at[index, 0] = temp[0]
 
-    for column in df:
-        if column > 0:
-            df[column] = df[column].astype(float)
+    for column in df.columns[1:]:
+        df[column] = df[column].astype(float)
 
     df = df.groupby(0, as_index=False).sum()
 
