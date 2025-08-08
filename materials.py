@@ -11,42 +11,42 @@ from time import perf_counter
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
-def write_json_file(write_where: str, write_what: dict) -> None:
+def save_json(write_where: str, write_what: dict) -> None:
     with open(write_where, "w") as outfile:
         json.dump(write_what, outfile)
 
-def read_json_file(read_where: str) -> dict:
+def load_json(read_where: str) -> dict:
     with open(read_where, "r") as infile:
         return json.load(infile)
 
-def make_sales_dict(read_what: str, pn: str, qty: str, factor: str) -> dict:
-    df = pd.read_csv(read_what)
-    df.columns = [pn, qty, factor]
-    df[qty] = df[qty] * df[factor]
-    df = df.groupby(constants.PN, as_index=False).sum()
-    return dict(zip(df[pn], df[qty]))
-
 def prep_data():
+
+    def make_dict(read_what: str, pn: str, qty: str, factor: str) -> dict:
+        df = pd.read_csv(read_what)
+        df.columns = [pn, qty, factor]
+        df[qty] = df[qty] * df[factor]
+        df = df.groupby(constants.PN, as_index=False).sum()
+        return dict(zip(df[pn], df[qty]))
 
     data_df = pd.read_csv(constants.DATA_TXT)
     translate_dict = dict(zip(data_df[constants.PN], data_df[constants.CR1]))
-    write_json_file(constants.TRANSLATE_JSON, translate_dict)
+    save_json(constants.TRANSLATE_JSON, translate_dict)
 
     valid_df = pd.read_csv(constants.VALIDATE_CSV)
     valid_dict = dict(zip(valid_df["TOKI"], valid_df["TLI"]))
-    write_json_file(constants.VALIDATE_JSON, valid_dict)
+    save_json(constants.VALIDATE_JSON, valid_dict)
 
-    bl_dict = make_sales_dict(constants.BL_TXT, constants.PN, constants.QTY, constants.FACTOR)
-    write_json_file(constants.BL_JSON, bl_dict)
+    bl_dict = make_dict(constants.BL_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    save_json(constants.BL_JSON, bl_dict)
 
-    hfr_dict = make_sales_dict(constants.HFR_TXT, constants.PN, constants.QTY, constants.FACTOR)
-    write_json_file(constants.HFR_JSON, hfr_dict)
+    hfr_dict = make_dict(constants.HFR_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    save_json(constants.HFR_JSON, hfr_dict)
 
 
 def build_schedule():
 
-    validation = read_json_file(constants.VALIDATE_JSON)
-    translation = read_json_file(constants.TRANSLATE_JSON)
+    validation = load_json(constants.VALIDATE_JSON)
+    translation = load_json(constants.TRANSLATE_JSON)
 
     html = requests.get(constants.URL)
 
