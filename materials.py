@@ -28,7 +28,7 @@ def prep_data():
         df = df.groupby(constants.PN, as_index=False).sum()
         return dict(zip(df[pn], df[qty]))
 
-    data_df = pd.read_csv(constants.DATA_TXT)
+    data_df = pd.read_csv(constants.DATA_CSV)
     translate_dict = dict(zip(data_df[constants.PN], data_df[constants.CR1]))
     save_json(constants.TRANSLATE_JSON, translate_dict)
 
@@ -36,10 +36,10 @@ def prep_data():
     valid_dict = dict(zip(valid_df["TOKI"], valid_df["TLI"]))
     save_json(constants.VALIDATE_JSON, valid_dict)
 
-    bl_dict = make_dict(constants.BL_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    bl_dict = make_dict(constants.BL_CSV, constants.PN, constants.QTY, constants.FACTOR)
     save_json(constants.BL_JSON, bl_dict)
 
-    hfr_dict = make_dict(constants.HFR_TXT, constants.PN, constants.QTY, constants.FACTOR)
+    hfr_dict = make_dict(constants.HFR_CSV, constants.PN, constants.QTY, constants.FACTOR)
     save_json(constants.HFR_JSON, hfr_dict)
 
 
@@ -125,7 +125,7 @@ def build_report():
     constants.HEADER.extend(enumerated_dates)
 
     df = pd.DataFrame(columns=constants.HEADER)  # type: ignore
-    data = pd.read_csv(constants.DATA_TXT)
+    data = pd.read_csv(constants.DATA_CSV)
     df[constants.PN] = data[constants.PN]
     df[constants.OH] = data[constants.QRT]
     df[constants.OO] = data[constants.QPO]
@@ -165,10 +165,7 @@ def build_report():
             df.loc[row, constants.T_AVAIL] + df.loc[row, constants.HFR]
         )
 
-    writer = pd.ExcelWriter(constants.MATERIALS, engine="xlsxwriter")  # type: ignore
-
-    df.to_excel(writer, sheet_name="Sheet1", index=False)
-    writer.close()
+    df.to_excel(constants.MATERIALS, index=False)
 
 
 if __name__ == "__main__":

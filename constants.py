@@ -4,10 +4,10 @@ Materials 15.2.0 \u00a92002-2025 Michael N. Rowsey
 ----------------------------------------------------------
 """
 
-DATA_TXT = "data.txt"
-HFR_TXT = "hfr.txt"
+DATA_CSV = "data.csv"
+HFR_CSV = "hfr.csv"
 HFR_JSON = ".hfr.json"
-BL_TXT = "bl.txt"
+BL_CSV = "bl.csv"
 BL_JSON = ".bl.json"
 SCHEDULE_JSON = ".schedule.json"
 VALIDATE_CSV = "validate.csv"
