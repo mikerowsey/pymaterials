@@ -7,7 +7,6 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup  # (if you keep it)
 
 log = logging.getLogger(__name__)
 
@@ -69,5 +68,25 @@ def build_schedule(url: str, validate_path: Path, translate_path: Path, dates_ou
     schedule = df.set_index(0).to_dict(orient="list")
     save_json(schedule_out, schedule)
 
-    if __name__ == "__main__":
-        build_schedule()
+
+resp = requests.get("https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001.htm", timeout=20)
+resp.raise_for_status()
+
+tables = pd.read_html(resp.text, flavor="lxml")
+
+if not tables:
+    raise ValueError("No tables found at URL")
+df = tables[0]
+
+da_shit = df[5:]
+da_shit = da_shit.drop([1, 2, 3, 4], axis=1)
+da_shit.reset_index(drop=True, inplace=True)
+
+df = df.replace(np.nan, 0)
+df.columns = range(df.shape[1])
+
+dates = df.iloc[3, 1:].tolist()
+dates = dates[4:]
+
+
+print(df)
