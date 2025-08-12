@@ -170,9 +170,9 @@ def build_report():
 
 if __name__ == "__main__":
     print(constants.COPYRIGHT)
-    start = perf_counter()
     prep_data()
+    start = perf_counter()
     build_schedule()
-    build_report()
     end = perf_counter()
     print(f"Success: {(end - start):.3f} seconds")
+    build_report()
