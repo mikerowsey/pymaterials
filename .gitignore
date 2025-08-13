@@ -4,4 +4,6 @@ _materials.xlsx
 pyrightconfig.json
 __pycache__
 ~$formatter.xlsm
+tmp/
+
 

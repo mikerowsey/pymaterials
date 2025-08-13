@@ -162,7 +162,7 @@ def build_report():
         )
 
         df.loc[row, constants.R_AVAIL] = (
-            df.loc[row, constants.T_AVAIL] + df.loc[row, constants.HFR]
+                df.loc[row, constants.T_AVAIL] + df.loc[row, constants.HFR]
         )
 
     df.to_excel(constants.MATERIALS, index=False)
