@@ -16,8 +16,12 @@ def save_json(write_where: str, write_what: dict) -> None:
         json.dump(write_what, outfile)
 
 def load_json(read_where: str) -> dict:
-    with open(read_where, "r") as infile:
-        return json.load(infile)
+    try:
+        with open(read_where, "r") as infile:
+            return json.load(infile)
+    except FileNotFoundError:
+        print(f"File not found: {read_where}")
+        exit(1)
 
 def prep_data():
 
