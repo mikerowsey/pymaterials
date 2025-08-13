@@ -8,6 +8,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import requests
+from pandas.core.interchange.dataframe_protocol import DataFrame
 
 log = logging.getLogger(__name__)
 
@@ -71,8 +72,8 @@ def build_schedule(url: str, validate_path: Path, translate_path: Path, dates_ou
 
 
 
-def save_schedule():
-    resp = requests.get("https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001.htm", timeout=20)
+def get_schedule() -> DataFrame:
+    resp = requests.get("https://www.toki.co.jp/purchasing/TLIHTML.files/sheet001a.htm", timeout=20)
     resp.raise_for_status()
     tables = pd.read_html(StringIO(resp.text), flavor="lxml")
     if not tables:
@@ -90,7 +91,14 @@ def save_schedule():
     df = df.groupby(0, as_index=False).sum()
     df.reset_index(drop=True, inplace=True)
     df.columns = range(df.shape[1])
+    return df
+
+try:
+    df = get_schedule()
     print(df)
+except Exception as e:
+    print(e)
 
+    # dates = df.iloc[3, 1:].tolist()
+    # dates = dates[4:]
 
-save_schedule()
